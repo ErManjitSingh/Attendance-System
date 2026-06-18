@@ -1,0 +1,57 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+:root {
+  --brand-primary: #1565c0;
+  --brand-primary-dark: #0d47a1;
+  --brand-accent: #c62828;
+  --brand-accent-light: #ffebee;
+  --brand-gradient: linear-gradient(180deg, #0d47a1 0%, #1565c0 100%);
+
+  --primary: var(--brand-primary);
+  --primary-dark: var(--brand-primary-dark);
+  --primary-light: #e3f2fd;
+  --accent: var(--brand-accent);
+
+  --bg-page: #f0f4f8;
+  --bg-card: #ffffff;
+  --bg-sidebar: #0d47a1;
+  --bg-input: #ffffff;
+  --bg-hover: #f5f7fa;
+  --text-primary: #1a2332;
+  --text-secondary: #5a6578;
+  --text-muted: #8b95a5;
+  --border: #e2e8f0;
+  --shadow-sm: 0 1px 3px rgba(21, 101, 192, 0.06);
+  --shadow-md: 0 4px 20px rgba(21, 101, 192, 0.08);
+  --shadow-lg: 0 8px 32px rgba(13, 71, 161, 0.12);
+  --radius: 14px;
+  --radius-sm: 10px;
+
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--text-primary);
+  background: var(--bg-page);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button,
+input,
+select {
+  font-family: inherit;
+}
