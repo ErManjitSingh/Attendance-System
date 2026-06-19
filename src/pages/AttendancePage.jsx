@@ -4,9 +4,12 @@ import {
   getAttendanceByTeamLeader,
   getAttendanceByManager,
   getAttendanceByUserMonth,
+  getTodayAttendance,
+  markAttendance,
   updateAttendance,
 } from '../api/attendance';
 import { fetchMakers, filterAttendanceRoles, getMakerName, normalizeDesignation } from '../api/makers';
+import AttendancePhoto from '../components/AttendancePhoto';
 import EditAttendanceModal from '../components/EditAttendanceModal';
 import StatusBadge, { SummaryCards, computeSummary } from '../components/StatusBadge';
 import { COMPANIES } from '../config/branding';
@@ -29,7 +32,8 @@ const VIEW_MODES = [
 
 const SCOPES = [
   { id: 'all', label: 'All Users' },
-
+  { id: 'team-leader', label: 'Team Leader' },
+  { id: 'manager', label: 'Manager' },
 ];
 
 const STATUSES = ['present', 'absent', 'half-day', 'late'];
@@ -61,6 +65,12 @@ export default function AttendancePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [editingRecord, setEditingRecord] = useState(null);
+  const [markUserId, setMarkUserId] = useState('');
+  const [markDate, setMarkDate] = useState(toDateString());
+  const [markStatus, setMarkStatus] = useState('present');
+  const [markNote, setMarkNote] = useState('');
+  const [marking, setMarking] = useState(false);
+  const [markMessage, setMarkMessage] = useState('');
 
   const company = COMPANIES[companyKey] || COMPANIES.ptw;
 
@@ -91,6 +101,7 @@ export default function AttendancePage() {
       return;
     }
     setSelectedUserId((prev) => (makers.some((m) => m._id === prev) ? prev : pickFirstId(makers)));
+    setMarkUserId((prev) => (makers.some((m) => m._id === prev) ? prev : pickFirstId(makers)));
     setScopeLeaderId((prev) => (teamLeaders.some((m) => m._id === prev) ? prev : pickFirstId(teamLeaders)));
     setScopeManagerId((prev) => (managers.some((m) => m._id === prev) ? prev : pickFirstId(managers)));
   }, [companyKey, makers, teamLeaders, managers]);
@@ -198,11 +209,117 @@ export default function AttendancePage() {
     await loadData();
   };
 
+  const handleMark = async () => {
+    if (!markUserId) return;
+    setMarking(true);
+    setMarkMessage('');
+    try {
+      const existing = await getTodayAttendance(markUserId, markDate);
+      if (existing?.marked) {
+        setMarkMessage('Attendance already marked for this user on the selected date.');
+        return;
+      }
+      const res = await markAttendance({
+        userId: markUserId,
+        date: markDate,
+        status: markStatus,
+        note: markNote || undefined,
+      });
+      setMarkMessage(res.message || 'Attendance marked successfully');
+      setMarkNote('');
+      await loadData();
+    } catch (e) {
+      if (e.status === 409) {
+        setMarkMessage(e.data?.message || 'Attendance already marked for this date');
+      } else {
+        setMarkMessage(e.message);
+      }
+    } finally {
+      setMarking(false);
+    }
+  };
+
   const calendarDays = viewMode === 'user' ? getMonthCalendarDays(selectedMonth) : [];
   const selectedMaker = makers.find((m) => m._id === selectedUserId);
 
   return (
     <div className="attendance-page">
+      <section className="card mark-card">
+        <div className="card__header">
+          <div className="card__icon card__icon--mark">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4-4v2" />
+              <circle cx="8.5" cy="7" r="4" />
+              <line x1="20" y1="8" x2="20" y2="14" />
+              <line x1="23" y1="11" x2="17" y2="11" />
+            </svg>
+          </div>
+          <div>
+            <h2 className="card__title">Mark Attendance for User</h2>
+            <p className="card__desc">{company.label} — mark attendance on behalf of an employee</p>
+          </div>
+        </div>
+        <div className="mark-form">
+          <div className="field">
+            <label htmlFor="mark-company">Company</label>
+            <select id="mark-company" value={companyKey} onChange={(e) => setCompanyKey(e.target.value)}>
+              {COMPANY_OPTIONS.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="mark-user">Employee</label>
+            <select
+              id="mark-user"
+              value={markUserId}
+              onChange={(e) => setMarkUserId(e.target.value)}
+              disabled={!makers.length}
+            >
+              {makers.map((m) => (
+                <option key={m._id} value={m._id}>
+                  {getMakerName(m)} · {m.designation}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="mark-date">Date</label>
+            <input id="mark-date" type="date" value={markDate} onChange={(e) => setMarkDate(e.target.value)} />
+          </div>
+          <div className="field">
+            <label htmlFor="mark-status">Status</label>
+            <select id="mark-status" value={markStatus} onChange={(e) => setMarkStatus(e.target.value)}>
+              {STATUSES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field field--grow">
+            <label htmlFor="mark-note">Note (optional)</label>
+            <input
+              id="mark-note"
+              type="text"
+              value={markNote}
+              onChange={(e) => setMarkNote(e.target.value)}
+              placeholder="Add a note..."
+            />
+          </div>
+          <button type="button" className="btn btn--primary" onClick={handleMark} disabled={marking || !makers.length}>
+            {marking ? 'Marking...' : 'Mark Attendance'}
+          </button>
+        </div>
+        {markMessage && (
+          <p className={`mark-message ${markMessage.toLowerCase().includes('success') ? 'mark-message--ok' : ''}`}>
+            {markMessage}
+          </p>
+        )}
+      </section>
+
       <section className="card">
         <div className="filters">
           <div className="filter-group">
@@ -390,6 +507,7 @@ export default function AttendancePage() {
               <table className="data-table">
                 <thead>
                   <tr>
+                    <th>Photo</th>
                     <th>Date</th>
                     <th>Employee</th>
                     <th>Designation</th>
@@ -404,13 +522,16 @@ export default function AttendancePage() {
                 <tbody>
                   {records.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="data-table__empty">
+                      <td colSpan={10} className="data-table__empty">
                         No attendance records for {company.shortLabel}.
                       </td>
                     </tr>
                   ) : (
                     records.map((row) => (
                       <tr key={row._id}>
+                        <td data-label="Photo">
+                          <AttendancePhoto src={row.image} alt={`${row.userName || 'Employee'} photo`} />
+                        </td>
                         <td data-label="Date">{formatDisplayDate(row.date)}</td>
                         <td data-label="Employee">{row.userName || '—'}</td>
                         <td data-label="Designation">{row.designation || '—'}</td>

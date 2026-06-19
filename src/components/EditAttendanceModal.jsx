@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import AttendancePhoto from './AttendancePhoto';
 import StatusBadge from './StatusBadge';
 import './EditAttendanceModal.css';
 
@@ -42,6 +43,12 @@ export default function EditAttendanceModal({ record, onClose, onSave }) {
           <p className="modal__current">
             Current: <StatusBadge status={record.status} />
           </p>
+          {record.image && (
+            <div className="modal__photo">
+              <p className="modal__photo-label">Live Photo</p>
+              <AttendancePhoto src={record.image} alt={`${record.userName} attendance`} />
+            </div>
+          )}
           <form onSubmit={handleSubmit} className="modal__form">
             <div className="field">
               <label htmlFor="edit-status">Status</label>
