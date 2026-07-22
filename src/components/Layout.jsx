@@ -3,7 +3,11 @@ import { logout } from '../config/auth';
 import { PTW_LOGO, COMPANIES } from '../config/branding';
 import './Layout.css';
 
-const NAV_ITEMS = [{ id: 'attendance', label: 'Attendance', icon: 'calendar' }];
+const NAV_ITEMS = [
+  { id: 'attendance', label: 'Attendance', icon: 'calendar', title: 'Attendance' },
+  { id: 'users', label: 'Members', icon: 'users', title: 'Members' },
+];
+
 const ptw = COMPANIES.ptw;
 
 function NavIcon({ name }) {
@@ -14,6 +18,16 @@ function NavIcon({ name }) {
         <line x1="16" y1="2" x2="16" y2="6" />
         <line x1="8" y1="2" x2="8" y2="6" />
         <line x1="3" y1="10" x2="21" y2="10" />
+      </svg>
+    );
+  }
+  if (name === 'users') {
+    return (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
       </svg>
     );
   }
@@ -62,6 +76,7 @@ function Sidebar({ activeTab, onTabChange, isOpen, onClose, onLogout }) {
 
 export function Layout({ children, activeTab, onTabChange, onLogout }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pageTitle = NAV_ITEMS.find((item) => item.id === activeTab)?.title || 'Dashboard';
 
   const handleLogout = () => {
     logout();
@@ -94,7 +109,7 @@ export function Layout({ children, activeTab, onTabChange, onLogout }) {
           <div className="layout__header-content">
             <div>
               <p className="layout__breadcrumb">Dashboard</p>
-              <h1 className="layout__page-title">Attendance</h1>
+              <h1 className="layout__page-title">{pageTitle}</h1>
             </div>
             <div className="layout__header-meta">
               <span className="layout__date">
