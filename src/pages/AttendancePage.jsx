@@ -38,6 +38,13 @@ const SCOPES = [
 
 const STATUSES = ['present', 'absent', 'half-day', 'late'];
 
+const SORT_OPTIONS = [
+  { id: 'default', label: 'Default' },
+  { id: 'name', label: 'Sort by Name (A–Z)' },
+  { id: 'come-first', label: 'Come First (Earliest First)' },
+  { id: 'come-late', label: 'Come Late (Latest First)' },
+];
+
 const COMPANY_OPTIONS = [
   { id: 'ptw', label: COMPANIES.ptw.label },
   { id: 'demand', label: COMPANIES.demand.label },
@@ -45,6 +52,25 @@ const COMPANY_OPTIONS = [
 
 function pickFirstId(list) {
   return list[0]?._id || '';
+}
+
+function getMarkedAtTime(record) {
+  if (!record?.markedAt) return Number.POSITIVE_INFINITY;
+  return new Date(record.markedAt).getTime();
+}
+
+function sortRecords(list, sortBy) {
+  const sorted = [...list];
+  if (sortBy === 'name') {
+    sorted.sort((a, b) =>
+      String(a.userName || '').localeCompare(String(b.userName || ''), 'en', { sensitivity: 'base' }),
+    );
+  } else if (sortBy === 'come-first') {
+    sorted.sort((a, b) => getMarkedAtTime(a) - getMarkedAtTime(b));
+  } else if (sortBy === 'come-late') {
+    sorted.sort((a, b) => getMarkedAtTime(b) - getMarkedAtTime(a));
+  }
+  return sorted;
 }
 
 export default function AttendancePage() {
@@ -59,6 +85,8 @@ export default function AttendancePage() {
   const [scopeLeaderId, setScopeLeaderId] = useState('');
   const [scopeManagerId, setScopeManagerId] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [sortBy, setSortBy] = useState('default');
+  const [notMarkedUserId, setNotMarkedUserId] = useState('');
   const [records, setRecords] = useState([]);
   const [summary, setSummary] = useState(computeSummary());
   const [byDate, setByDate] = useState({});
@@ -98,12 +126,14 @@ export default function AttendancePage() {
   useEffect(() => {
     if (!makers.length) {
       setSelectedUserId('');
+      setNotMarkedUserId('');
       return;
     }
     setSelectedUserId((prev) => (makers.some((m) => m._id === prev) ? prev : pickFirstId(makers)));
     setMarkUserId((prev) => (makers.some((m) => m._id === prev) ? prev : pickFirstId(makers)));
     setScopeLeaderId((prev) => (teamLeaders.some((m) => m._id === prev) ? prev : pickFirstId(teamLeaders)));
     setScopeManagerId((prev) => (managers.some((m) => m._id === prev) ? prev : pickFirstId(managers)));
+    setNotMarkedUserId('');
   }, [companyKey, makers, teamLeaders, managers]);
 
   const applyCompanyFilter = useCallback(
@@ -242,6 +272,38 @@ export default function AttendancePage() {
   const calendarDays = viewMode === 'user' ? getMonthCalendarDays(selectedMonth) : [];
   const selectedMaker = makers.find((m) => m._id === selectedUserId);
 
+  const referenceDate = viewMode === 'today' || viewMode === 'date' ? selectedDate : null;
+
+  const notMarkedEmployees = useMemo(() => {
+    if (viewMode === 'user') return [];
+
+    if (viewMode === 'today' || viewMode === 'date') {
+      const markedIds = new Set(records.map((r) => String(r.userId)));
+      return makers
+        .filter((m) => !markedIds.has(String(m._id)))
+        .sort((a, b) => getMakerName(a).localeCompare(getMakerName(b), 'en', { sensitivity: 'base' }));
+    }
+
+    if (viewMode === 'month') {
+      const markedIds = new Set(records.map((r) => String(r.userId)));
+      return makers
+        .filter((m) => !markedIds.has(String(m._id)))
+        .sort((a, b) => getMakerName(a).localeCompare(getMakerName(b), 'en', { sensitivity: 'base' }));
+    }
+
+    return [];
+  }, [viewMode, records, makers]);
+
+  const displayedRecords = useMemo(() => sortRecords(records, sortBy), [records, sortBy]);
+
+  const handleNotMarkedSelect = (userId) => {
+    setNotMarkedUserId(userId);
+    if (!userId) return;
+    setMarkUserId(userId);
+    if (referenceDate) setMarkDate(referenceDate);
+    setMarkMessage(`Selected ${getMakerName(makers.find((m) => m._id === userId))} — use Mark Attendance above.`);
+  };
+
   return (
     <div className="attendance-page">
       <section className="card mark-card">
@@ -332,6 +394,7 @@ export default function AttendancePage() {
                   className={`pill ${viewMode === v.id ? 'pill--active' : ''}`}
                   onClick={() => {
                     setViewMode(v.id);
+                    setNotMarkedUserId('');
                     if (v.id === 'today') setSelectedDate(toDateString());
                   }}
                 >
@@ -448,6 +511,42 @@ export default function AttendancePage() {
               </div>
             )}
 
+            <div className="field">
+              <label htmlFor="sort-filter">Sort By</label>
+              <select id="sort-filter" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                {SORT_OPTIONS.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {viewMode !== 'user' && (
+              <div className="field field--grow">
+                <label htmlFor="not-marked-filter">
+                  Not Marked Employees ({notMarkedEmployees.length})
+                </label>
+                <select
+                  id="not-marked-filter"
+                  value={notMarkedUserId}
+                  onChange={(e) => handleNotMarkedSelect(e.target.value)}
+                  disabled={!notMarkedEmployees.length}
+                >
+                  <option value="">
+                    {notMarkedEmployees.length
+                      ? 'Select employee who did not mark'
+                      : 'Everyone has marked'}
+                  </option>
+                  {notMarkedEmployees.map((m) => (
+                    <option key={m._id} value={m._id}>
+                      {getMakerName(m)} — {m.designation}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             <button type="button" className="btn btn--secondary" onClick={loadData} disabled={loading || !makers.length}>
               Refresh
             </button>
@@ -467,6 +566,14 @@ export default function AttendancePage() {
         {error && <div className="alert alert--error">{error}</div>}
         {!makers.length && !loadingMakers && (
           <div className="alert alert--info">No employees found for {company.label}.</div>
+        )}
+        {viewMode !== 'user' && notMarkedEmployees.length > 0 && (
+          <div className="alert alert--info">
+            {notMarkedEmployees.length} employee{notMarkedEmployees.length === 1 ? '' : 's'} have not marked attendance
+            {(viewMode === 'today' || viewMode === 'date') && ` for ${formatDisplayDate(selectedDate)}`}
+            {viewMode === 'month' && ` in ${formatMonthLabel(selectedMonth)}`}.
+            Use the <strong>Not Marked Employees</strong> dropdown to select and mark them.
+          </div>
         )}
         {loading ? (
           <div className="loading">
@@ -520,14 +627,14 @@ export default function AttendancePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {records.length === 0 ? (
+                  {displayedRecords.length === 0 ? (
                     <tr>
                       <td colSpan={10} className="data-table__empty">
                         No attendance records for {company.shortLabel}.
                       </td>
                     </tr>
                   ) : (
-                    records.map((row) => (
+                    displayedRecords.map((row) => (
                       <tr key={row._id}>
                         <td data-label="Photo">
                           <AttendancePhoto src={row.image} alt={`${row.userName || 'Employee'} photo`} />

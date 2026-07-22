@@ -8,11 +8,11 @@ export const COMPANIES = {
     shortLabel: 'PTW',
     tagline: 'World Tours DMC',
     logo: PTW_LOGO,
-    accent: '#c62828',
-    accentLight: '#ffebee',
-    primary: '#1565c0',
-    primaryDark: '#0d47a1',
-    gradient: 'linear-gradient(135deg, #0d47a1 0%, #1976d2 50%, #1565c0 100%)',
+    accent: '#d32f2f',
+    accentLight: '#fde8e8',
+    primary: '#0b3d6e',
+    primaryDark: '#072a4f',
+    gradient: 'linear-gradient(165deg, #072a4f 0%, #0b3d6e 55%, #12508a 100%)',
   },
   demand: {
     id: 'demand',
@@ -24,7 +24,7 @@ export const COMPANIES = {
     accentLight: '#e8f5e9',
     primary: '#1b5e20',
     primaryDark: '#0d3d12',
-    gradient: 'linear-gradient(135deg, #1b5e20 0%, #2e7d32 50%, #43a047 100%)',
+    gradient: 'linear-gradient(165deg, #0d3d12 0%, #1b5e20 55%, #2e7d32 100%)',
   },
 };
 

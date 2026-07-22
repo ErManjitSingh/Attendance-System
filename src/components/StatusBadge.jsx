@@ -1,17 +1,14 @@
 const STATUS_STYLES = {
-  present: { bg: '#dcfce7', color: '#166534', label: 'Present' },
-  absent: { bg: '#fee2e2', color: '#991b1b', label: 'Absent' },
-  'half-day': { bg: '#fef3c7', color: '#92400e', label: 'Half Day' },
-  late: { bg: '#dbeafe', color: '#1e40af', label: 'Late' },
+  present: { bg: '#e8f5e9', color: '#1b5e20', label: 'Present' },
+  absent: { bg: '#fde8e8', color: '#b71c1c', label: 'Absent' },
+  'half-day': { bg: '#fff8e1', color: '#e65100', label: 'Half Day' },
+  late: { bg: '#e3f2fd', color: '#0d47a1', label: 'Late' },
 };
 
 export default function StatusBadge({ status }) {
-  const style = STATUS_STYLES[status] || { bg: '#f3f4f6', color: '#374151', label: status || '—' };
+  const style = STATUS_STYLES[status] || { bg: '#f0f4f8', color: '#4a5d73', label: status || '—' };
   return (
-    <span
-      className="status-badge"
-      style={{ background: style.bg, color: style.color }}
-    >
+    <span className="status-badge" style={{ background: style.bg, color: style.color }}>
       {style.label}
     </span>
   );
@@ -29,20 +26,18 @@ export function computeSummary(records = []) {
 
 export function SummaryCards({ summary }) {
   const items = [
-    { key: 'total', label: 'Total Marked', color: '#6366f1' },
-    { key: 'present', label: 'Present', color: '#22c55e' },
-    { key: 'absent', label: 'Absent', color: '#ef4444' },
-    { key: 'halfDay', label: 'Half Day', color: '#f59e0b' },
-    { key: 'late', label: 'Late', color: '#3b82f6' },
+    { key: 'total', label: 'Total Marked' },
+    { key: 'present', label: 'Present' },
+    { key: 'absent', label: 'Absent' },
+    { key: 'halfDay', label: 'Half Day' },
+    { key: 'late', label: 'Late' },
   ];
 
   return (
     <div className="summary-cards">
       {items.map((item) => (
-        <div key={item.key} className="summary-card">
-          <span className="summary-card__value" style={{ color: item.color }}>
-            {summary?.[item.key] ?? 0}
-          </span>
+        <div key={item.key} className="summary-card" data-key={item.key}>
+          <span className="summary-card__value">{summary?.[item.key] ?? 0}</span>
           <span className="summary-card__label">{item.label}</span>
         </div>
       ))}

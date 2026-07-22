@@ -27,10 +27,8 @@ function Sidebar({ activeTab, onTabChange, isOpen, onClose, onLogout }) {
       <aside className={`sidebar ${isOpen ? 'sidebar--open' : ''}`}>
         <div className="sidebar__brand">
           <img src={PTW_LOGO} alt={ptw.label} className="sidebar__brand-logo" />
-          <div className="sidebar__brand-text">
-            <p className="sidebar__title">{ptw.label}</p>
-            <p className="sidebar__subtitle">{ptw.tagline}</p>
-          </div>
+          <p className="sidebar__title">{ptw.label}</p>
+          <p className="sidebar__subtitle">{ptw.tagline}</p>
         </div>
 
         <nav className="sidebar__nav">
