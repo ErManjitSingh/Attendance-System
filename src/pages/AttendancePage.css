@@ -482,6 +482,129 @@
   border-left: 3px solid var(--navy-mid);
 }
 
+/* ── Monthly Salary ── */
+.salary-panel {
+  margin: 0 0 24px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background:
+    linear-gradient(180deg, #f7fafc 0%, #fff 42%),
+    #fff;
+}
+
+.salary-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.salary-panel__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.salary-panel__desc {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.salary-panel__totals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.salary-panel__total {
+  min-width: 110px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid var(--border);
+}
+
+.salary-panel__total span {
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.salary-panel__total strong {
+  display: block;
+  margin-top: 4px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--navy);
+}
+
+.salary-panel__total--net {
+  background: var(--navy);
+  border-color: var(--navy);
+}
+
+.salary-panel__total--net span {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.salary-panel__total--net strong {
+  color: #fff;
+}
+
+.salary-panel .table-wrap {
+  border: none;
+  border-radius: 0;
+}
+
+.salary-table__name {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.salary-table__tag {
+  width: fit-content;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.salary-table__net {
+  font-weight: 800;
+  color: var(--navy);
+}
+
+.salary-panel--user .salary-panel__header {
+  border-bottom: none;
+}
+
+.salary-panel__user-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 0 18px 16px;
+}
+
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .summary-cards {

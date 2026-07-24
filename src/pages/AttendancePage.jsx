@@ -11,6 +11,7 @@ import {
 import { fetchMakers, filterAttendanceRoles, getMakerName, normalizeDesignation } from '../api/makers';
 import AttendancePhoto from '../components/AttendancePhoto';
 import EditAttendanceModal from '../components/EditAttendanceModal';
+import SalaryDetailModal from '../components/SalaryDetailModal';
 import StatusBadge, { SummaryCards, computeSummary } from '../components/StatusBadge';
 import { COMPANIES } from '../config/branding';
 import { filterByCompany, filterRecordsByCompany } from '../utils/company';
@@ -21,6 +22,7 @@ import {
   toDateString,
   toMonthString,
 } from '../utils/date';
+import { buildMonthSalaryRows, calculateMonthlySalary, formatINR } from '../utils/salary';
 import './AttendancePage.css';
 
 const VIEW_MODES = [
@@ -99,6 +101,8 @@ export default function AttendancePage() {
   const [markNote, setMarkNote] = useState('');
   const [marking, setMarking] = useState(false);
   const [markMessage, setMarkMessage] = useState('');
+  const [monthAttendance, setMonthAttendance] = useState([]);
+  const [salaryDetail, setSalaryDetail] = useState(null);
 
   const company = COMPANIES[companyKey] || COMPANIES.ptw;
 
@@ -145,6 +149,7 @@ export default function AttendancePage() {
     setLoading(true);
     setError('');
     setByDate({});
+    setMonthAttendance([]);
     try {
       if (viewMode === 'user' && selectedUserId) {
         const res = await getAttendanceByUserMonth(selectedUserId, selectedMonth);
@@ -198,11 +203,11 @@ export default function AttendancePage() {
         } else if (scope === 'manager' && scopeManagerId) {
           res = await getAttendanceByManager(scopeManagerId, selectedMonth);
         } else {
-          res = await getAttendanceByMonth(selectedMonth, {
-            status: statusFilter || undefined,
-          });
+          res = await getAttendanceByMonth(selectedMonth);
         }
-        let list = applyCompanyFilter(res.data || []);
+        const allList = applyCompanyFilter(res.data || []);
+        setMonthAttendance(allList);
+        let list = allList;
         if (statusFilter) list = list.filter((r) => r.status === statusFilter);
         setRecords(list);
         setSummary(computeSummary(list));
@@ -210,6 +215,7 @@ export default function AttendancePage() {
     } catch (e) {
       setError(e.message);
       setRecords([]);
+      setMonthAttendance([]);
       setSummary(computeSummary());
     } finally {
       setLoading(false);
@@ -295,6 +301,47 @@ export default function AttendancePage() {
   }, [viewMode, records, makers]);
 
   const displayedRecords = useMemo(() => sortRecords(records, sortBy), [records, sortBy]);
+
+  const salaryScopeMakers = useMemo(() => {
+    if (viewMode !== 'month') return [];
+    if (scope === 'team-leader' && scopeLeaderId) {
+      return makers.filter(
+        (m) =>
+          String(m._id) === String(scopeLeaderId) ||
+          String(m.teamLeaderId || '') === String(scopeLeaderId),
+      );
+    }
+    if (scope === 'manager' && scopeManagerId) {
+      return makers.filter(
+        (m) =>
+          String(m._id) === String(scopeManagerId) ||
+          String(m.managerId || '') === String(scopeManagerId),
+      );
+    }
+    return makers;
+  }, [viewMode, scope, scopeLeaderId, scopeManagerId, makers]);
+
+  const salaryRows = useMemo(() => {
+    if (viewMode !== 'month') return [];
+    return buildMonthSalaryRows(salaryScopeMakers, selectedMonth, monthAttendance);
+  }, [viewMode, salaryScopeMakers, selectedMonth, monthAttendance]);
+
+  const salaryTotals = useMemo(() => {
+    return salaryRows.reduce(
+      (acc, row) => {
+        acc.net += row.netSalary;
+        acc.basic += row.basicSalary;
+        acc.withEntry += row.hasSalaryEntry ? 1 : 0;
+        return acc;
+      },
+      { net: 0, basic: 0, withEntry: 0 },
+    );
+  }, [salaryRows]);
+
+  const userSalary = useMemo(() => {
+    if (viewMode !== 'user' || !selectedMaker) return null;
+    return calculateMonthlySalary(selectedMaker, selectedMonth, records);
+  }, [viewMode, selectedMaker, selectedMonth, records]);
 
   const handleNotMarkedSelect = (userId) => {
     setNotMarkedUserId(userId);
@@ -395,6 +442,7 @@ export default function AttendancePage() {
                   onClick={() => {
                     setViewMode(v.id);
                     setNotMarkedUserId('');
+                    setSalaryDetail(null);
                     if (v.id === 'today') setSelectedDate(toDateString());
                   }}
                 >
@@ -584,6 +632,130 @@ export default function AttendancePage() {
           <>
             <SummaryCards summary={summary} />
 
+            {viewMode === 'month' && (
+              <section className="salary-panel">
+                <div className="salary-panel__header">
+                  <div>
+                    <h3 className="salary-panel__title">Monthly Salary</h3>
+                    <p className="salary-panel__desc">
+                      {formatMonthLabel(selectedMonth)} · Mon–Sat working days · Sunday counted only when marked
+                    </p>
+                  </div>
+                  <div className="salary-panel__totals">
+                    <div className="salary-panel__total">
+                      <span>Employees</span>
+                      <strong>{salaryRows.length}</strong>
+                    </div>
+                    <div className="salary-panel__total">
+                      <span>With salary set</span>
+                      <strong>{salaryTotals.withEntry}</strong>
+                    </div>
+                    <div className="salary-panel__total salary-panel__total--net">
+                      <span>Total net</span>
+                      <strong>{formatINR(salaryTotals.net)}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="table-wrap">
+                  <table className="data-table salary-table">
+                    <thead>
+                      <tr>
+                        <th>Employee</th>
+                        <th>Designation</th>
+                        <th>Basic</th>
+                        <th>Paid Days</th>
+                        <th>Working Days</th>
+                        <th>Net Salary</th>
+                        <th>Details</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {salaryRows.length === 0 ? (
+                        <tr>
+                          <td colSpan={7} className="data-table__empty">
+                            No employees found for salary calculation.
+                          </td>
+                        </tr>
+                      ) : (
+                        salaryRows.map((row) => (
+                          <tr key={row.userId}>
+                            <td data-label="Employee">
+                              <div className="salary-table__name">
+                                <span>{row.userName}</span>
+                                {!row.hasSalaryEntry && (
+                                  <span className="salary-table__tag">No salary entry</span>
+                                )}
+                              </div>
+                            </td>
+                            <td data-label="Designation">{row.designation}</td>
+                            <td data-label="Basic">{formatINR(row.basicSalary)}</td>
+                            <td data-label="Paid Days">{Number(row.paidDays).toFixed(1)}</td>
+                            <td data-label="Working Days">{row.totalWorkingDays}</td>
+                            <td data-label="Net Salary">
+                              <span className="salary-table__net">{formatINR(row.netSalary)}</span>
+                            </td>
+                            <td data-label="Details">
+                              <button
+                                type="button"
+                                className="btn btn--edit"
+                                onClick={() => setSalaryDetail(row)}
+                              >
+                                View Details
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
+
+            {viewMode === 'user' && userSalary && (
+              <section className="salary-panel salary-panel--user">
+                <div className="salary-panel__header">
+                  <div>
+                    <h3 className="salary-panel__title">Monthly Salary</h3>
+                    <p className="salary-panel__desc">
+                      {userSalary.userName} · {formatMonthLabel(selectedMonth)} · Mon–Sat · Sunday only if marked
+                    </p>
+                  </div>
+                  <div className="salary-panel__totals">
+                    <div className="salary-panel__total">
+                      <span>Basic</span>
+                      <strong>{formatINR(userSalary.basicSalary)}</strong>
+                    </div>
+                    <div className="salary-panel__total">
+                      <span>Paid days</span>
+                      <strong>{Number(userSalary.paidDays).toFixed(1)}</strong>
+                    </div>
+                    <div className="salary-panel__total">
+                      <span>Working days</span>
+                      <strong>{userSalary.totalWorkingDays}</strong>
+                    </div>
+                    <div className="salary-panel__total salary-panel__total--net">
+                      <span>Net salary</span>
+                      <strong>{formatINR(userSalary.netSalary)}</strong>
+                    </div>
+                  </div>
+                </div>
+                <div className="salary-panel__user-actions">
+                  {!userSalary.hasSalaryEntry && (
+                    <span className="salary-table__tag">No salary entry for this month</span>
+                  )}
+                  <button
+                    type="button"
+                    className="btn btn--edit"
+                    onClick={() => setSalaryDetail(userSalary)}
+                  >
+                    View Details
+                  </button>
+                </div>
+              </section>
+            )}
+
             {viewMode === 'user' && (
               <div className="calendar">
                 <div className="calendar__weekdays">
@@ -676,6 +848,10 @@ export default function AttendancePage() {
           onClose={() => setEditingRecord(null)}
           onSave={handleUpdate}
         />
+      )}
+
+      {salaryDetail && (
+        <SalaryDetailModal detail={salaryDetail} onClose={() => setSalaryDetail(null)} />
       )}
     </div>
   );

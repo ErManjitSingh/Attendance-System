@@ -1,0 +1,232 @@
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 42, 79, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 16px;
+}
+
+.modal__close {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  background: #fff;
+  border-radius: 6px;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.salary-modal {
+  background: var(--bg-surface);
+  border-radius: var(--radius);
+  width: 100%;
+  max-width: 520px;
+  max-height: min(92vh, 760px);
+  overflow: auto;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border);
+}
+
+.salary-modal__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--border);
+  background:
+    linear-gradient(135deg, rgba(7, 42, 79, 0.06) 0%, transparent 55%),
+    linear-gradient(180deg, #fafcfe 0%, #fff 100%);
+}
+
+.salary-modal__eyebrow {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--crimson);
+}
+
+.salary-modal__header h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1.25;
+}
+
+.salary-modal__sub {
+  margin: 4px 0 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.salary-modal__body {
+  padding: 18px 20px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.salary-modal__alert {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: #fff7ed;
+  color: #9a3412;
+  border-left: 3px solid #f59e0b;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.salary-modal__net {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(120deg, #072a4f 0%, #0d3d6e 100%);
+  color: #fff;
+}
+
+.salary-modal__net span {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.salary-modal__net strong {
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.salary-modal__section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  background: #fff;
+}
+
+.salary-modal__section h4 {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.salary-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.salary-modal__stat {
+  padding: 10px 8px;
+  border-radius: 6px;
+  background: var(--bg-muted);
+  border-top: 3px solid var(--border-strong);
+  text-align: center;
+}
+
+.salary-modal__stat[data-tone='present'] { border-top-color: #2e7d32; }
+.salary-modal__stat[data-tone='late'] { border-top-color: #1565c0; }
+.salary-modal__stat[data-tone='half'] { border-top-color: #c77700; }
+.salary-modal__stat[data-tone='absent'] { border-top-color: var(--crimson); }
+
+.salary-modal__stat strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--navy);
+  line-height: 1.1;
+}
+
+.salary-modal__stat span {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.salary-modal__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px dashed var(--border);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.salary-modal__row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.salary-modal__row strong {
+  font-weight: 700;
+  color: var(--navy);
+  text-align: right;
+}
+
+.salary-modal__row--highlight {
+  background: var(--sky);
+  margin: 0 -8px;
+  padding: 8px;
+  border-radius: 6px;
+  border-bottom: none;
+}
+
+.salary-modal__row--muted strong {
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.salary-modal__formula {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-muted);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+.salary-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 12px 20px 18px;
+  border-top: 1px solid var(--border);
+}
+
+@media (max-width: 520px) {
+  .salary-modal__grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .salary-modal__net strong {
+    font-size: 22px;
+  }
+}
