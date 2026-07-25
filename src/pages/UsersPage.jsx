@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
-  deleteMaker,
   emptySalaryEntry,
   fetchMakers,
   getMakerName,
@@ -8,7 +7,6 @@ import {
   normalizeDesignation,
   normalizeSalaryHistory,
   updateMaker,
-  updateMakerStatus,
 } from '../api/makers';
 import { COMPANIES } from '../config/branding';
 import { filterByCompany } from '../utils/company';
@@ -69,14 +67,6 @@ function StatusPill({ status }) {
   );
 }
 
-function ActivePill({ active }) {
-  return (
-    <span className={`users-pill ${active ? 'users-pill--success' : 'users-pill--muted'}`}>
-      {active ? 'Active' : 'Inactive'}
-    </span>
-  );
-}
-
 export default function UsersPage() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -91,9 +81,6 @@ export default function UsersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editFormData, setEditFormData] = useState({});
-
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [userToDelete, setUserToDelete] = useState(null);
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [newPassword, setNewPassword] = useState('');
@@ -178,7 +165,6 @@ export default function UsersPage() {
 
   const buildEditForm = (user) => ({
     ...user,
-    active: isUserActiveFlag(user),
     salaryHistory: normalizeSalaryHistory(user?.salaryHistory),
   });
 
@@ -272,12 +258,10 @@ export default function UsersPage() {
       setIsUpdating(true);
       const payload = {
         ...editFormData,
-        active: editFormData.active !== false,
         salaryHistory: normalizeSalaryHistory(editFormData.salaryHistory).filter((e) => e.month),
       };
       const updatedUser = await updateMaker(selectedUser._id, payload);
       const merged = mergeUpdatedUser(selectedUser, updatedUser, {
-        active: payload.active,
         salaryHistory: payload.salaryHistory,
       });
       setUsers((prev) => prev.map((u) => (u._id === selectedUser._id ? merged : u)));
@@ -289,67 +273,6 @@ export default function UsersPage() {
       flash(err.message || 'Failed to update user', true);
     } finally {
       setIsUpdating(false);
-    }
-  };
-
-  const handleToggleActive = async (userId) => {
-    try {
-      setIsUpdating(true);
-      const user = users.find((u) => u._id === userId);
-      if (!user) throw new Error('User not found');
-      const newActive = !isUserActiveFlag(user);
-      const updatedUser = await updateMaker(userId, { ...user, active: newActive });
-      const merged = mergeUpdatedUser(user, updatedUser, { active: newActive });
-      setUsers((prev) => prev.map((u) => (u._id === userId ? merged : u)));
-      if (selectedUser?._id === userId) {
-        setSelectedUser(merged);
-        if (!isEditing) setEditFormData(buildEditForm(merged));
-      }
-      flash(`User marked as ${newActive ? 'active' : 'inactive'}`);
-    } catch (err) {
-      flash(err.message || 'Failed to update active status', true);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleBlockUser = async (userId, currentStatus) => {
-    try {
-      setIsUpdating(true);
-      const newStatus = currentStatus === 'Blocked' ? 'Active' : 'Blocked';
-      await updateMakerStatus(userId, newStatus);
-      setUsers((prev) => prev.map((u) => (u._id === userId ? { ...u, status: newStatus } : u)));
-      if (selectedUser?._id === userId) {
-        const next = { ...selectedUser, status: newStatus };
-        setSelectedUser(next);
-        if (!isEditing) setEditFormData(buildEditForm(next));
-      }
-      flash(`User ${newStatus === 'Blocked' ? 'blocked' : 'unblocked'} successfully`);
-    } catch (err) {
-      flash(err.message || 'Failed to update user status', true);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleDeleteClick = (user) => {
-    setUserToDelete(user);
-    setIsDeleteModalOpen(true);
-  };
-
-  const handleDelete = async () => {
-    try {
-      await deleteMaker(userToDelete._id);
-      setUsers((prev) => prev.filter((u) => u._id !== userToDelete._id));
-      if (selectedUser?._id === userToDelete._id) {
-        setIsModalOpen(false);
-        setSelectedUser(null);
-      }
-      setIsDeleteModalOpen(false);
-      setUserToDelete(null);
-      flash('User deleted successfully');
-    } catch (err) {
-      flash(err.message || 'Failed to delete user', true);
     }
   };
 
@@ -419,7 +342,7 @@ export default function UsersPage() {
           </div>
           <div>
             <h2 className="card__title">Members</h2>
-            <p className="card__desc">View, edit profiles, salary history, and account status</p>
+            <p className="card__desc">View, edit profiles, and salary history</p>
           </div>
         </div>
 
@@ -503,28 +426,8 @@ export default function UsersPage() {
               </div>
             </div>
             <div className="users-mobile-card__actions">
-              <label className="users-check">
-                <input
-                  type="checkbox"
-                  checked={isUserActiveFlag(user)}
-                  disabled={isUpdating}
-                  onChange={() => handleToggleActive(user._id)}
-                />
-                Active
-              </label>
               <button type="button" className="btn--edit" onClick={() => handleViewProfile(user)}>
                 View
-              </button>
-              <button
-                type="button"
-                className="btn--edit"
-                disabled={isUpdating}
-                onClick={() => handleBlockUser(user._id, user.status)}
-              >
-                {user.status === 'Blocked' ? 'Activate' : 'Deactivate'}
-              </button>
-              <button type="button" className="btn--edit btn--danger-text" onClick={() => handleDeleteClick(user)}>
-                Delete
               </button>
             </div>
           </article>
@@ -552,9 +455,7 @@ export default function UsersPage() {
                 <th>Company</th>
                 <th>User type</th>
                 <th>Status</th>
-                <th>Active</th>
                 <th>Operations</th>
-                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -575,32 +476,12 @@ export default function UsersPage() {
                   <td data-label="Status">
                     <StatusPill status={user.status} />
                   </td>
-                  <td data-label="Active">
-                    <label className="users-check">
-                      <input
-                        type="checkbox"
-                        checked={isUserActiveFlag(user)}
-                        disabled={isUpdating}
-                        onChange={() => handleToggleActive(user._id)}
-                        title={isUserActiveFlag(user) ? 'Active — click to set inactive' : 'Inactive — click to set active'}
-                      />
-                      <span className={isUserActiveFlag(user) ? 'users-check__yes' : 'users-check__no'}>
-                        {isUserActiveFlag(user) ? 'Yes' : 'No'}
-                      </span>
-                    </label>
-                  </td>
                   <td data-label="Operations">
                     <div className="users-ops">
                       <button type="button" className="btn--edit" onClick={() => handleViewProfile(user)}>
                         View
                       </button>
-                     
                     </div>
-                  </td>
-                  <td data-label="Action">
-                    <button type="button" className="btn--edit btn--danger-text" onClick={() => handleDeleteClick(user)}>
-                      Delete
-                    </button>
                   </td>
                 </tr>
               ))}
@@ -681,7 +562,6 @@ export default function UsersPage() {
                   <div className="users-pill-row">
                     <span className="users-pill users-pill--navy">{selectedUser.userType || 'User'}</span>
                     <StatusPill status={selectedUser.status} />
-                    <ActivePill active={isUserActiveFlag(selectedUser)} />
                   </div>
                 </div>
               </div>
@@ -805,22 +685,6 @@ export default function UsersPage() {
                         </select>
                       ) : (
                         <p className="users-readonly">{selectedUser.designation || 'Not provided'}</p>
-                      )}
-                    </div>
-
-                    <div className="field">
-                      <label htmlFor="edit-active">Active</label>
-                      {isEditing ? (
-                        <select
-                          id="edit-active"
-                          value={editFormData.active !== false ? 'true' : 'false'}
-                          onChange={(e) => handleInputChange('active', e.target.value === 'true')}
-                        >
-                          <option value="true">True</option>
-                          <option value="false">False</option>
-                        </select>
-                      ) : (
-                        <p className="users-readonly">{isUserActiveFlag(selectedUser) ? 'True' : 'False'}</p>
                       )}
                     </div>
 
@@ -1004,10 +868,6 @@ export default function UsersPage() {
                     <p className="users-readonly">{selectedUser.status || 'Active'}</p>
                   </div>
                   <div>
-                    <p className="users-salary__label">Active</p>
-                    <p className="users-readonly">{isUserActiveFlag(selectedUser) ? 'True' : 'False'}</p>
-                  </div>
-                  <div>
                     <p className="users-salary__label">Publish</p>
                     <p className="users-readonly">{selectedUser.publish || 'Not available'}</p>
                   </div>
@@ -1021,49 +881,6 @@ export default function UsersPage() {
                   </div>
                 </div>
               </section>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete modal */}
-      {isDeleteModalOpen && userToDelete && (
-        <div className="modal-overlay" onClick={() => setIsDeleteModalOpen(false)} role="presentation">
-          <div className="modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-labelledby="delete-title">
-            <div className="modal__header">
-              <h3 id="delete-title">Delete User</h3>
-              <button
-                type="button"
-                className="modal__close"
-                onClick={() => {
-                  setIsDeleteModalOpen(false);
-                  setUserToDelete(null);
-                }}
-                aria-label="Close"
-              >
-                ×
-              </button>
-            </div>
-            <div className="modal__body">
-              <p className="modal__meta">
-                Are you sure you want to delete <strong>{getMakerName(userToDelete)}</strong>? This action cannot be
-                undone.
-              </p>
-              <div className="modal__actions">
-                <button
-                  type="button"
-                  className="btn btn--secondary"
-                  onClick={() => {
-                    setIsDeleteModalOpen(false);
-                    setUserToDelete(null);
-                  }}
-                >
-                  Cancel
-                </button>
-                <button type="button" className="btn btn--danger" onClick={handleDelete}>
-                  Delete User
-                </button>
-              </div>
             </div>
           </div>
         </div>
