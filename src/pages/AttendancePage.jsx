@@ -61,6 +61,10 @@ function getMarkedAtTime(record) {
   return new Date(record.markedAt).getTime();
 }
 
+function getAttendanceAddress(record) {
+  return record?.currentLocation?.address?.trim() || '—';
+}
+
 function sortRecords(list, sortBy) {
   const sorted = [...list];
   if (sortBy === 'name') {
@@ -794,6 +798,7 @@ export default function AttendancePage() {
                     <th>Team Leader</th>
                     <th>Manager</th>
                     <th>Marked At</th>
+                    <th>Address</th>
                     <th>Note</th>
                     <th>Actions</th>
                   </tr>
@@ -801,7 +806,7 @@ export default function AttendancePage() {
                 <tbody>
                   {displayedRecords.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="data-table__empty">
+                      <td colSpan={11} className="data-table__empty">
                         No attendance records for {company.shortLabel}.
                       </td>
                     </tr>
@@ -821,6 +826,9 @@ export default function AttendancePage() {
                         <td data-label="Manager">{row.managerName || '—'}</td>
                         <td data-label="Marked At">
                           {row.markedAt ? new Date(row.markedAt).toLocaleString('en-IN') : '—'}
+                        </td>
+                        <td data-label="Address" className="data-table__address">
+                          {getAttendanceAddress(row)}
                         </td>
                         <td data-label="Note">{row.note || '—'}</td>
                         <td data-label="Actions">

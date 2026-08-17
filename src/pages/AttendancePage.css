@@ -436,6 +436,14 @@
   font-weight: 500;
 }
 
+.data-table__address {
+  min-width: 180px;
+  max-width: 280px;
+  line-height: 1.45;
+  white-space: normal;
+  word-break: break-word;
+}
+
 /* ── States ── */
 .loading {
   display: flex;
