@@ -1,17 +1,14 @@
-const STATUS_STYLES = {
-  present: { bg: '#e8f5e9', color: '#1b5e20', label: 'Present' },
-  absent: { bg: '#fde8e8', color: '#b71c1c', label: 'Absent' },
-  'half-day': { bg: '#fff8e1', color: '#e65100', label: 'Half Day' },
-  late: { bg: '#e3f2fd', color: '#0d47a1', label: 'Late' },
+const STATUS_LABELS = {
+  present: 'Present',
+  absent: 'Absent',
+  'half-day': 'Half Day',
+  late: 'Late',
 };
 
 export default function StatusBadge({ status }) {
-  const style = STATUS_STYLES[status] || { bg: '#f0f4f8', color: '#4a5d73', label: status || '—' };
-  return (
-    <span className="status-badge" style={{ background: style.bg, color: style.color }}>
-      {style.label}
-    </span>
-  );
+  const label = STATUS_LABELS[status] || status || '—';
+  const tone = STATUS_LABELS[status] ? status : 'unknown';
+  return <span className={`status-badge status-badge--${tone}`}>{label}</span>;
 }
 
 export function computeSummary(records = []) {

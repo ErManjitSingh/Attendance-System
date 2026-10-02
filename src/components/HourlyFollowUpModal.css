@@ -1,0 +1,237 @@
+.follow-modal {
+  width: min(880px, 100%);
+  max-height: min(90vh, 920px);
+  overflow: auto;
+  background: var(--bg-surface);
+  border-radius: 24px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-lg);
+}
+
+.follow-modal__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px 24px 18px;
+  border-bottom: 1px solid var(--border);
+  background:
+    radial-gradient(circle at 100% 0%, rgba(198, 161, 91, 0.22), transparent 42%),
+    linear-gradient(180deg, #fbf7f0 0%, #fffdf9 100%);
+}
+
+.follow-modal__eyebrow {
+  margin: 0 0 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+}
+
+.follow-modal__header h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 560;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.follow-modal__sub {
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.follow-modal__header-side {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.follow-modal__body {
+  padding: 20px 24px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.follow-sessions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.follow-session {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px;
+  border-radius: 16px;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+}
+
+.follow-session--pending {
+  background: #fff8ef;
+  border-color: #ead7b4;
+}
+
+.follow-session__label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.follow-session strong {
+  display: block;
+  margin-top: 2px;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.follow-session p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.follow-totals,
+.follow-slot__metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+}
+
+.follow-slot__metrics {
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 12px;
+}
+
+.follow-metric {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid var(--border);
+}
+
+.follow-metric strong {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 560;
+  line-height: 1;
+  color: var(--pine);
+}
+
+.follow-metric span {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.follow-empty {
+  margin: 0;
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--text-secondary);
+  background: var(--bg-muted);
+  border-radius: 16px;
+}
+
+.follow-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-left: 2px solid #eadcc4;
+}
+
+.follow-slot {
+  position: relative;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #fffdf9;
+  border: 1px solid var(--border);
+}
+
+.follow-slot::before {
+  content: '';
+  position: absolute;
+  left: -24px;
+  top: 20px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 0 4px #f6edd8;
+}
+
+.follow-slot__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.follow-slot__time {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--ink);
+}
+
+.follow-slot__submitted {
+  margin: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.follow-slot__flag {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #f6edd8;
+  color: #7a5b24;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.follow-slot__details {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--bg-muted);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+@media (max-width: 720px) {
+  .follow-sessions,
+  .follow-totals,
+  .follow-slot__metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .follow-modal__header,
+  .follow-modal__body {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+
+  .follow-modal__header h3 {
+    font-size: 24px;
+  }
+}

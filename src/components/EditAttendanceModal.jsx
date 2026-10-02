@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import AttendancePhoto from './AttendancePhoto';
 import StatusBadge from './StatusBadge';
+import { formatWhen, getLogoutAddress, summarizeFollowUps } from '../utils/attendanceDisplay';
 import './EditAttendanceModal.css';
 
 const STATUSES = ['present', 'absent', 'half-day', 'late'];
@@ -43,11 +44,38 @@ export default function EditAttendanceModal({ record, onClose, onSave }) {
           <p className="modal__current">
             Current: <StatusBadge status={record.status} />
           </p>
-          {record.image && (
-            <div className="modal__photo">
-              <p className="modal__photo-label">Live Photo</p>
-              <AttendancePhoto src={record.image} alt={`${record.userName} attendance`} />
+          <div className="modal__session">
+            <div>
+              <span>Check-in</span>
+              <strong>{formatWhen(record.markedAt)}</strong>
             </div>
+            <div>
+              <span>Logout</span>
+              <strong>{record.logoutAt ? formatWhen(record.logoutAt) : 'Still in'}</strong>
+            </div>
+            <div>
+              <span>Hourly slots</span>
+              <strong>{summarizeFollowUps(record.hourlyFollowUps).slots}</strong>
+            </div>
+          </div>
+          {(record.image || record.logoutImage) && (
+            <div className="modal__photos">
+              {record.image && (
+                <div className="modal__photo">
+                  <p className="modal__photo-label">Check-in photo</p>
+                  <AttendancePhoto src={record.image} alt={`${record.userName} check-in`} />
+                </div>
+              )}
+              {record.logoutImage && (
+                <div className="modal__photo">
+                  <p className="modal__photo-label">Logout photo</p>
+                  <AttendancePhoto src={record.logoutImage} alt={`${record.userName} logout`} />
+                </div>
+              )}
+            </div>
+          )}
+          {getLogoutAddress(record) && (
+            <p className="modal__meta">Logout address: {getLogoutAddress(record)}</p>
           )}
           <form onSubmit={handleSubmit} className="modal__form">
             <div className="field">

@@ -2,7 +2,7 @@
   display: flex;
   flex-direction: column;
   gap: 24px;
-  max-width: 1280px;
+  max-width: 1440px;
 }
 
 .users-page .card {
@@ -20,7 +20,7 @@
   margin: -24px -24px 20px;
   padding: 18px 24px;
   border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, #fafcfe 0%, #fff 100%);
+  background: linear-gradient(180deg, #fbf7f0 0%, #fffdf9 100%);
 }
 
 .users-page .card__icon {
@@ -437,14 +437,21 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--border);
+  border-right: 1px solid var(--border-strong);
+  border-bottom: 1px solid var(--border-strong);
 }
 
 .users-page .data-table td {
   padding: 12px 14px;
-  border-bottom: 1px solid var(--border);
+  border-right: 1px solid #e4d9c8;
+  border-bottom: 1px solid #e4d9c8;
   color: var(--text-secondary);
   vertical-align: middle;
+}
+
+.users-page .data-table th:last-child,
+.users-page .data-table td:last-child {
+  border-right: none;
 }
 
 .users-page .data-table tr:last-child td {
@@ -452,7 +459,7 @@
 }
 
 .users-page .data-table tr:hover td {
-  background: #fafcfe;
+  background: #fbf7f0;
 }
 
 .users-ops {
@@ -476,7 +483,7 @@
   padding: 0;
   align-items: stretch;
   justify-content: stretch;
-  background: rgba(7, 42, 79, 0.35);
+  background: rgba(16, 40, 36, 0.35);
 }
 
 .users-profile-modal.modal {
@@ -528,7 +535,7 @@
   text-align: center;
   gap: 14px;
   padding: 18px;
-  background: linear-gradient(180deg, #f5f9fc 0%, #fff 100%);
+  background: linear-gradient(180deg, #f7f3ec 0%, #fffdf9 100%);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
@@ -582,7 +589,7 @@
 
 .users-salary {
   padding: 16px;
-  background: linear-gradient(180deg, #fafcfe 0%, #f0f4f8 100%);
+  background: linear-gradient(180deg, #fbf7f0 0%, #f3eee6 100%);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
@@ -708,7 +715,7 @@
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(7, 42, 79, 0.5);
+  background: rgba(16, 40, 36, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -743,7 +750,7 @@
   justify-content: space-between;
   padding: 16px 20px;
   border-bottom: 1px solid var(--border);
-  background: #fafcfe;
+  background: #fbf7f0;
 }
 
 .modal__header h3 {

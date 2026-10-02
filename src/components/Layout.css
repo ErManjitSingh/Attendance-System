@@ -40,7 +40,7 @@
 .sidebar-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(7, 42, 79, 0.45);
+  background: rgba(16, 40, 36, 0.48);
   border: none;
   z-index: 90;
   cursor: pointer;
@@ -108,9 +108,9 @@
 }
 
 .sidebar__link--active {
-  background: rgba(255, 255, 255, 0.12);
-  color: #fff;
-  box-shadow: inset 3px 0 0 var(--crimson);
+  background: rgba(198, 161, 91, 0.16);
+  color: #f8f1df;
+  box-shadow: inset 3px 0 0 var(--gold);
 }
 
 .sidebar__footer {
@@ -141,8 +141,8 @@
 }
 
 .sidebar__logout:hover {
-  background: rgba(211, 47, 47, 0.25);
-  border-color: rgba(211, 47, 47, 0.5);
+  background: rgba(198, 161, 91, 0.18);
+  border-color: rgba(198, 161, 91, 0.55);
 }
 
 /* ── Main ── */
@@ -158,8 +158,8 @@
   align-items: center;
   gap: 14px;
   padding: 16px 28px;
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(8px);
+  background: rgba(255, 253, 249, 0.88);
+  backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border);
   position: sticky;
   top: 0;
@@ -209,9 +209,11 @@
 .layout__date {
   font-size: 13px;
   font-weight: 600;
-  color: var(--text-secondary);
-  padding: 8px 0;
-  border-bottom: 2px solid var(--crimson);
+  color: var(--pine-deep);
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--gold-soft);
+  border: 1px solid #ead9b0;
 }
 
 .layout__content {

@@ -6,10 +6,10 @@
 .attendance-photo__thumb {
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: 6px;
   overflow: hidden;
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 62px;
+  border-radius: 12px;
   cursor: pointer;
   background: var(--bg-muted);
   transition: border-color 0.15s;
@@ -29,7 +29,7 @@
 .photo-modal {
   position: fixed;
   inset: 0;
-  background: rgba(7, 42, 79, 0.82);
+  background: rgba(16, 40, 36, 0.82);
   display: flex;
   align-items: center;
   justify-content: center;

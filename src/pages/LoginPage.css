@@ -8,7 +8,7 @@
 .login-page__bg {
   position: relative;
   background:
-    linear-gradient(160deg, rgba(7, 42, 79, 0.92) 0%, rgba(11, 61, 110, 0.88) 100%),
+    linear-gradient(165deg, rgba(14, 36, 32, 0.9) 0%, rgba(23, 53, 47, 0.72) 100%),
     url('https://images.unsplash.com/photo-1488646953014-85cb44e25828?auto=format&fit=crop&w=1400&q=80')
       center / cover no-repeat;
   display: flex;
@@ -53,7 +53,7 @@
   display: block;
   width: 48px;
   height: 3px;
-  background: var(--crimson);
+  background: var(--gold);
   margin-bottom: 20px;
 }
 
@@ -62,7 +62,7 @@
   flex-direction: column;
   justify-content: center;
   padding: 48px 56px;
-  background: #fff;
+  background: #fffdf9;
   max-width: none;
   width: 100%;
   border-radius: 0;

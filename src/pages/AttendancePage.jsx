@@ -11,6 +11,7 @@ import {
 import { fetchMakers, filterAttendanceRoles, getMakerName, normalizeDesignation } from '../api/makers';
 import AttendancePhoto from '../components/AttendancePhoto';
 import EditAttendanceModal from '../components/EditAttendanceModal';
+import HourlyFollowUpModal from '../components/HourlyFollowUpModal';
 import SalaryDetailModal from '../components/SalaryDetailModal';
 import StatusBadge, { SummaryCards, computeSummary } from '../components/StatusBadge';
 import { COMPANIES } from '../config/branding';
@@ -22,6 +23,11 @@ import {
   toDateString,
   toMonthString,
 } from '../utils/date';
+import {
+  formatWhen,
+  getLogoutAddress,
+  summarizeFollowUps,
+} from '../utils/attendanceDisplay';
 import { buildMonthSalaryRows, calculateMonthlySalary, formatINR } from '../utils/salary';
 import './AttendancePage.css';
 
@@ -107,6 +113,7 @@ export default function AttendancePage() {
   const [markMessage, setMarkMessage] = useState('');
   const [monthAttendance, setMonthAttendance] = useState([]);
   const [salaryDetail, setSalaryDetail] = useState(null);
+  const [followUpRecord, setFollowUpRecord] = useState(null);
 
   const company = COMPANIES[companyKey] || COMPANIES.ptw;
 
@@ -305,6 +312,22 @@ export default function AttendancePage() {
   }, [viewMode, records, makers]);
 
   const displayedRecords = useMemo(() => sortRecords(records, sortBy), [records, sortBy]);
+
+  const dayInsights = useMemo(() => {
+    return displayedRecords.reduce(
+      (acc, record) => {
+        if (record.logoutAt) acc.loggedOut += 1;
+        else acc.stillIn += 1;
+        const follow = summarizeFollowUps(record.hourlyFollowUps);
+        acc.slots += follow.slots;
+        acc.followups += follow.followups;
+        acc.prospects += follow.prospects;
+        acc.pipeline += follow.pipeline;
+        return acc;
+      },
+      { loggedOut: 0, stillIn: 0, slots: 0, followups: 0, prospects: 0, pipeline: 0 },
+    );
+  }, [displayedRecords]);
 
   const salaryScopeMakers = useMemo(() => {
     if (viewMode !== 'month') return [];
@@ -636,6 +659,35 @@ export default function AttendancePage() {
           <>
             <SummaryCards summary={summary} />
 
+            {displayedRecords.length > 0 && (
+              <div className="insight-strip" aria-label="Logout and follow-up totals">
+                <div className="insight-card">
+                  <span>Logged out</span>
+                  <strong>{dayInsights.loggedOut}</strong>
+                </div>
+                <div className="insight-card">
+                  <span>Still in</span>
+                  <strong>{dayInsights.stillIn}</strong>
+                </div>
+                <div className="insight-card">
+                  <span>Hour slots</span>
+                  <strong>{dayInsights.slots}</strong>
+                </div>
+                <div className="insight-card">
+                  <span>Follow-ups</span>
+                  <strong>{dayInsights.followups}</strong>
+                </div>
+                <div className="insight-card">
+                  <span>Prospects</span>
+                  <strong>{dayInsights.prospects}</strong>
+                </div>
+                <div className="insight-card insight-card--accent">
+                  <span>Pipeline</span>
+                  <strong>{dayInsights.pipeline}</strong>
+                </div>
+              </div>
+            )}
+
             {viewMode === 'month' && (
               <section className="salary-panel">
                 <div className="salary-panel__header">
@@ -790,15 +842,12 @@ export default function AttendancePage() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Photo</th>
                     <th>Date</th>
                     <th>Employee</th>
-                    <th>Designation</th>
                     <th>Status</th>
-                    <th>Team Leader</th>
-                    <th>Manager</th>
-                    <th>Marked At</th>
-                    <th>Address</th>
+                    <th>Check-in</th>
+                    <th>Logout</th>
+                    <th>Hourly follow-up</th>
                     <th>Note</th>
                     <th>Actions</th>
                   </tr>
@@ -806,42 +855,81 @@ export default function AttendancePage() {
                 <tbody>
                   {displayedRecords.length === 0 ? (
                     <tr>
-                      <td colSpan={11} className="data-table__empty">
+                      <td colSpan={8} className="data-table__empty">
                         No attendance records for {company.shortLabel}.
                       </td>
                     </tr>
                   ) : (
-                    displayedRecords.map((row) => (
-                      <tr key={row._id}>
-                        <td data-label="Photo">
-                          <AttendancePhoto src={row.image} alt={`${row.userName || 'Employee'} photo`} />
-                        </td>
-                        <td data-label="Date">{formatDisplayDate(row.date)}</td>
-                        <td data-label="Employee">{row.userName || '—'}</td>
-                        <td data-label="Designation">{row.designation || '—'}</td>
-                        <td data-label="Status">
-                          <StatusBadge status={row.status} />
-                        </td>
-                        <td data-label="Team Leader">{row.teamLeaderName || '—'}</td>
-                        <td data-label="Manager">{row.managerName || '—'}</td>
-                        <td data-label="Marked At">
-                          {row.markedAt ? new Date(row.markedAt).toLocaleString('en-IN') : '—'}
-                        </td>
-                        <td data-label="Address" className="data-table__address">
-                          {getAttendanceAddress(row)}
-                        </td>
-                        <td data-label="Note">{row.note || '—'}</td>
-                        <td data-label="Actions">
-                          <button
-                            type="button"
-                            className="btn btn--edit"
-                            onClick={() => setEditingRecord(row)}
-                          >
-                            Edit
-                          </button>
-                        </td>
-                      </tr>
-                    ))
+                    displayedRecords.map((row) => {
+                      const follow = summarizeFollowUps(row.hourlyFollowUps);
+                      const logoutAddress = getLogoutAddress(row);
+                      return (
+                        <tr key={row._id}>
+                          <td data-label="Date">{formatDisplayDate(row.date)}</td>
+                          <td data-label="Employee">
+                            <div className="person-cell">
+                              <span className="person-cell__name">{row.userName || '—'}</span>
+                              <span className="person-cell__meta">
+                                {row.designation || '—'}
+                                {row.teamLeaderName ? ` · ${row.teamLeaderName}` : ''}
+                                {row.managerName ? ` · ${row.managerName}` : ''}
+                              </span>
+                            </div>
+                          </td>
+                          <td data-label="Status">
+                            <StatusBadge status={row.status} />
+                          </td>
+                          <td data-label="Check-in" className="session-td">
+                            <div className="session-cell">
+                              <AttendancePhoto src={row.image} alt={`${row.userName || 'Employee'} check-in`} />
+                              <div>
+                                <span className="session-cell__time">{formatWhen(row.markedAt)}</span>
+                                <span className="session-cell__place">{getAttendanceAddress(row)}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td data-label="Logout" className="session-td">
+                            {row.logoutAt ? (
+                              <div className="session-cell">
+                                <AttendancePhoto src={row.logoutImage} alt={`${row.userName || 'Employee'} logout`} />
+                                <div>
+                                  <span className="session-cell__time">{formatWhen(row.logoutAt)}</span>
+                                  <span className="session-cell__place">{logoutAddress || '—'}</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="session-cell__pending">Still in</span>
+                            )}
+                          </td>
+                          <td data-label="Hourly follow-up">
+                            {follow.slots ? (
+                              <div className="follow-cell">
+                                <div className="follow-stats">
+                                  <span><strong>{follow.followups}</strong> follow-ups</span>
+                                  <span><strong>{follow.prospects}</strong> prospects</span>
+                                  <span><strong>{follow.pipeline}</strong> pipeline</span>
+                                </div>
+                                <button type="button" className="btn btn--edit" onClick={() => setFollowUpRecord(row)}>
+                                  {follow.slots} hour{follow.slots === 1 ? '' : 's'}
+                                </button>
+                              </div>
+                            ) : (
+                              <span className="session-cell__pending">No follow-ups</span>
+                            )}
+                          </td>
+                          <td data-label="Note">{row.note || '—'}</td>
+                          <td data-label="Actions">
+                            <button
+                              type="button"
+                              className="btn btn--edit"
+                              onClick={() => setEditingRecord(row)}
+                            >
+                              Edit
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
@@ -860,6 +948,10 @@ export default function AttendancePage() {
 
       {salaryDetail && (
         <SalaryDetailModal detail={salaryDetail} onClose={() => setSalaryDetail(null)} />
+      )}
+
+      {followUpRecord && (
+        <HourlyFollowUpModal record={followUpRecord} onClose={() => setFollowUpRecord(null)} />
       )}
     </div>
   );

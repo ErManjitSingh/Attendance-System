@@ -108,7 +108,7 @@ export function Layout({ children, activeTab, onTabChange, onLogout }) {
           </button>
           <div className="layout__header-content">
             <div>
-              <p className="layout__breadcrumb">Dashboard</p>
+              <p className="layout__breadcrumb">{ptw.label}</p>
               <h1 className="layout__page-title">{pageTitle}</h1>
             </div>
             <div className="layout__header-meta">
