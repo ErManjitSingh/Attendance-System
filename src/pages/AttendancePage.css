@@ -173,6 +173,20 @@
   border-color: var(--navy-mid);
 }
 
+.btn--excel {
+  background: #1f6b45;
+  color: #fff;
+}
+
+.btn--excel:hover:not(:disabled) {
+  background: #185538;
+}
+
+.btn--excel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btn--edit {
   height: 32px;
   padding: 0 12px;
@@ -264,6 +278,13 @@
   flex-wrap: wrap;
 }
 
+.results-header__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
 .results-badge {
   font-size: 11px;
   font-weight: 800;
@@ -334,6 +355,7 @@
 .status-badge--absent { background: #f8ebe6; color: #9a3d2a; }
 .status-badge--half-day { background: #f8f1df; color: #8a5a12; }
 .status-badge--late { background: #e8eef6; color: #2f5278; }
+.status-badge--not-marked { background: #f3eee6; color: #6d6256; }
 .status-badge--unknown { background: var(--bg-muted); color: var(--text-secondary); }
 
 .insight-strip {
@@ -559,6 +581,64 @@
 
 .data-table tbody tr:hover {
   background: #fbf7f0;
+}
+
+.data-table tr.company-band td {
+  background: #17352f;
+  color: #f6edd8;
+  border-right: none;
+  border-bottom: 1px solid rgba(246, 237, 216, 0.28);
+  padding: 12px 14px;
+}
+
+.data-table tr.company-band:hover td {
+  background: #17352f;
+}
+
+.company-band__inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.company-band__inner strong {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 560;
+}
+
+.company-band__inner span {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(246, 237, 216, 0.82);
+}
+
+.data-table tr.row--missing {
+  background: #faf7f2;
+}
+
+.month-report__note {
+  margin: 0;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  background: #fbf7f0;
+  border-bottom: 1px solid var(--border);
+}
+
+.month-report__num,
+.month-report__time {
+  font-variant-numeric: tabular-nums;
+  font-weight: 650;
+  color: var(--ink);
+}
+
+.month-report th:not(:first-child),
+.month-report td.month-report__num,
+.month-report td.month-report__time {
+  text-align: center;
 }
 
 .data-table__empty {
@@ -819,6 +899,14 @@
 
   .data-table td:last-child {
     border-bottom: none;
+  }
+
+  .data-table tr.company-band td {
+    display: block;
+  }
+
+  .data-table tr.company-band td::before {
+    content: none;
   }
 
   .data-table td::before {

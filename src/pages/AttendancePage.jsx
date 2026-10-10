@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   getAttendanceByMonth,
   getAttendanceByTeamLeader,
@@ -15,7 +15,7 @@ import HourlyFollowUpModal from '../components/HourlyFollowUpModal';
 import SalaryDetailModal from '../components/SalaryDetailModal';
 import StatusBadge, { SummaryCards, computeSummary } from '../components/StatusBadge';
 import { COMPANIES } from '../config/branding';
-import { filterByCompany, filterRecordsByCompany } from '../utils/company';
+import { filterByCompany, filterRecordsByCompany, getCompanyKey } from '../utils/company';
 import {
   formatDisplayDate,
   formatMonthLabel,
@@ -28,6 +28,8 @@ import {
   getLogoutAddress,
   summarizeFollowUps,
 } from '../utils/attendanceDisplay';
+import { downloadAttendanceExcel, downloadMonthlyReportExcel } from '../utils/exportAttendance';
+import { buildMonthlyUserRows, sortMonthlyRows } from '../utils/monthlyReport';
 import { buildMonthSalaryRows, calculateMonthlySalary, formatINR } from '../utils/salary';
 import './AttendancePage.css';
 
@@ -54,9 +56,12 @@ const SORT_OPTIONS = [
 ];
 
 const COMPANY_OPTIONS = [
+  { id: 'all', label: 'All companies' },
   { id: 'ptw', label: COMPANIES.ptw.label },
   { id: 'demand', label: COMPANIES.demand.label },
 ];
+
+const COMPANY_ORDER = ['ptw', 'demand', 'other'];
 
 function pickFirstId(list) {
   return list[0]?._id || '';
@@ -86,7 +91,7 @@ function sortRecords(list, sortBy) {
 }
 
 export default function AttendancePage() {
-  const [companyKey, setCompanyKey] = useState('ptw');
+  const [companyKey, setCompanyKey] = useState('all');
   const [allMakers, setAllMakers] = useState([]);
   const [loadingMakers, setLoadingMakers] = useState(true);
   const [viewMode, setViewMode] = useState('today');
@@ -115,12 +120,16 @@ export default function AttendancePage() {
   const [salaryDetail, setSalaryDetail] = useState(null);
   const [followUpRecord, setFollowUpRecord] = useState(null);
 
-  const company = COMPANIES[companyKey] || COMPANIES.ptw;
+  const company =
+    companyKey === 'all'
+      ? { label: 'All companies', shortLabel: 'All companies' }
+      : COMPANIES[companyKey] || COMPANIES.ptw;
 
-  const makers = useMemo(
-    () => filterByCompany(filterAttendanceRoles(allMakers), companyKey),
-    [allMakers, companyKey],
-  );
+  const makers = useMemo(() => {
+    const roles = filterAttendanceRoles(allMakers);
+    if (companyKey === 'all') return roles;
+    return filterByCompany(roles, companyKey);
+  }, [allMakers, companyKey]);
 
   const teamLeaders = useMemo(
     () => makers.filter((m) => normalizeDesignation(m.designation) === 'team leader'),
@@ -311,10 +320,81 @@ export default function AttendancePage() {
     return [];
   }, [viewMode, records, makers]);
 
-  const displayedRecords = useMemo(() => sortRecords(records, sortBy), [records, sortBy]);
+  const displayedRecords = useMemo(() => {
+    const withCompany = records.map((row) => {
+      const maker = makers.find((item) => String(item._id) === String(row.userId));
+      const key = getCompanyKey(maker?.companyName) || 'other';
+      return {
+        ...row,
+        companyKey: key,
+        companyLabel: COMPANIES[key]?.label || maker?.companyName || 'Other',
+      };
+    });
+
+    let list = withCompany;
+    if ((viewMode === 'today' || viewMode === 'date') && !statusFilter) {
+      const markedIds = new Set(list.map((row) => String(row.userId)));
+      const missing = makers
+        .filter((maker) => !markedIds.has(String(maker._id)))
+        .map((maker) => {
+          const key = getCompanyKey(maker.companyName) || 'other';
+          return {
+            _id: `missing-${maker._id}-${selectedDate}`,
+            userId: maker._id,
+            userName: getMakerName(maker),
+            designation: maker.designation,
+            date: selectedDate,
+            status: 'not-marked',
+            companyKey: key,
+            companyLabel: COMPANIES[key]?.label || 'Other',
+            missing: true,
+            hourlyFollowUps: [],
+          };
+        });
+      list = [...list, ...missing];
+    }
+
+    return sortRecords(list, sortBy);
+  }, [records, makers, sortBy, viewMode, statusFilter, selectedDate]);
+
+  const companyGroups = useMemo(() => {
+    const buckets = new Map();
+    displayedRecords.forEach((row) => {
+      const key = row.companyKey || 'other';
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key).push(row);
+    });
+    return [...buckets.keys()]
+      .sort((a, b) => {
+        const aIndex = COMPANY_ORDER.indexOf(a);
+        const bIndex = COMPANY_ORDER.indexOf(b);
+        return (aIndex === -1 ? 99 : aIndex) - (bIndex === -1 ? 99 : bIndex);
+      })
+      .map((key) => {
+        const rows = buckets.get(key);
+        const follow = rows.reduce(
+          (acc, row) => {
+            const summary = summarizeFollowUps(row.hourlyFollowUps);
+            acc.followups += summary.followups;
+            acc.prospects += summary.prospects;
+            acc.pipeline += summary.pipeline;
+            return acc;
+          },
+          { followups: 0, prospects: 0, pipeline: 0 },
+        );
+        return {
+          key,
+          label: COMPANIES[key]?.label || rows[0]?.companyLabel || 'Other',
+          rows,
+          marked: rows.filter((row) => !row.missing).length,
+          missing: rows.filter((row) => row.missing).length,
+          ...follow,
+        };
+      });
+  }, [displayedRecords]);
 
   const dayInsights = useMemo(() => {
-    return displayedRecords.reduce(
+    return displayedRecords.filter((row) => !row.missing).reduce(
       (acc, record) => {
         if (record.logoutAt) acc.loggedOut += 1;
         else acc.stillIn += 1;
@@ -348,6 +428,43 @@ export default function AttendancePage() {
     return makers;
   }, [viewMode, scope, scopeLeaderId, scopeManagerId, makers]);
 
+  const monthlyRows = useMemo(() => {
+    if (viewMode !== 'month') return [];
+    let rows = buildMonthlyUserRows(salaryScopeMakers, selectedMonth, monthAttendance);
+    if (statusFilter === 'present') rows = rows.filter((row) => row.present > 0);
+    else if (statusFilter === 'late') rows = rows.filter((row) => row.late > 0);
+    else if (statusFilter === 'half-day') rows = rows.filter((row) => row.halfDay > 0);
+    else if (statusFilter === 'absent') rows = rows.filter((row) => row.absent > 0);
+    return sortMonthlyRows(rows, sortBy);
+  }, [viewMode, salaryScopeMakers, selectedMonth, monthAttendance, statusFilter, sortBy]);
+
+  const monthGroups = useMemo(() => {
+    const buckets = new Map();
+    monthlyRows.forEach((row) => {
+      const key = row.companyKey || 'other';
+      if (!buckets.has(key)) buckets.set(key, []);
+      buckets.get(key).push(row);
+    });
+    return [...buckets.keys()]
+      .sort((a, b) => {
+        const aIndex = COMPANY_ORDER.indexOf(a);
+        const bIndex = COMPANY_ORDER.indexOf(b);
+        return (aIndex === -1 ? 99 : aIndex) - (bIndex === -1 ? 99 : bIndex);
+      })
+      .map((key) => {
+        const rows = buckets.get(key);
+        return {
+          key,
+          label: COMPANIES[key]?.label || rows[0]?.companyLabel || 'Other',
+          rows,
+          workingDays: rows.reduce((sum, row) => sum + row.workingDays, 0),
+          leave: rows.reduce((sum, row) => sum + row.leave, 0),
+          halfDay: rows.reduce((sum, row) => sum + row.halfDay, 0),
+          absent: rows.reduce((sum, row) => sum + row.absent, 0),
+        };
+      });
+  }, [monthlyRows]);
+
   const salaryRows = useMemo(() => {
     if (viewMode !== 'month') return [];
     return buildMonthSalaryRows(salaryScopeMakers, selectedMonth, monthAttendance);
@@ -369,6 +486,22 @@ export default function AttendancePage() {
     if (viewMode !== 'user' || !selectedMaker) return null;
     return calculateMonthlySalary(selectedMaker, selectedMonth, records);
   }, [viewMode, selectedMaker, selectedMonth, records]);
+
+  const handleDownloadExcel = () => {
+    const period = viewMode === 'month' || viewMode === 'user' ? selectedMonth : selectedDate;
+    const companySlug = companyKey === 'all' ? 'all-companies' : companyKey;
+    if (viewMode === 'month') {
+      downloadMonthlyReportExcel({
+        rows: monthlyRows,
+        filename: `monthly-report-${companySlug}-${period}.xlsx`,
+      });
+      return;
+    }
+    downloadAttendanceExcel({
+      records: displayedRecords,
+      filename: `attendance-${companySlug}-${period}.xlsx`,
+    });
+  };
 
   const handleNotMarkedSelect = (userId) => {
     setNotMarkedUserId(userId);
@@ -635,14 +768,24 @@ export default function AttendancePage() {
             {viewMode === 'month' && `Month — ${formatMonthLabel(selectedMonth)}`}
             {viewMode === 'user' && `${getMakerName(selectedMaker)} — ${formatMonthLabel(selectedMonth)}`}
           </h2>
-          <span className="results-badge">{company.shortLabel}</span>
+          <div className="results-header__actions">
+            <button
+              type="button"
+              className="btn btn--excel"
+              onClick={handleDownloadExcel}
+              disabled={loading || (viewMode === 'month' ? !monthlyRows.length : !displayedRecords.length)}
+            >
+              Download Excel
+            </button>
+            <span className="results-badge">{company.shortLabel}</span>
+          </div>
         </div>
 
         {error && <div className="alert alert--error">{error}</div>}
         {!makers.length && !loadingMakers && (
           <div className="alert alert--info">No employees found for {company.label}.</div>
         )}
-        {viewMode !== 'user' && notMarkedEmployees.length > 0 && (
+        {viewMode !== 'user' && viewMode !== 'month' && notMarkedEmployees.length > 0 && (
           <div className="alert alert--info">
             {notMarkedEmployees.length} employee{notMarkedEmployees.length === 1 ? '' : 's'} have not marked attendance
             {(viewMode === 'today' || viewMode === 'date') && ` for ${formatDisplayDate(selectedDate)}`}
@@ -659,7 +802,7 @@ export default function AttendancePage() {
           <>
             <SummaryCards summary={summary} />
 
-            {displayedRecords.length > 0 && (
+            {viewMode !== 'month' && displayedRecords.some((row) => !row.missing) && (
               <div className="insight-strip" aria-label="Logout and follow-up totals">
                 <div className="insight-card">
                   <span>Logged out</span>
@@ -838,10 +981,69 @@ export default function AttendancePage() {
               </div>
             )}
 
+            {viewMode === 'month' ? (
+              <div className="table-wrap">
+                <p className="month-report__note">
+                  One row per user. Working days are present and late. Leave is an unmarked Monday–Saturday up to today. Half day and absent are marked days.
+                </p>
+                <table className="data-table month-report">
+                  <thead>
+                    <tr>
+                      <th>User</th>
+                      <th>Working days</th>
+                      <th>Leave</th>
+                      <th>Half day</th>
+                      <th>Absent</th>
+                      <th>Average check-in</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {monthGroups.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="data-table__empty">
+                          No users found for {company.label}.
+                        </td>
+                      </tr>
+                    ) : (
+                      monthGroups.map((group) => (
+                        <Fragment key={group.key}>
+                          <tr className="company-band">
+                            <td colSpan={6}>
+                              <div className="company-band__inner">
+                                <strong>{group.label}</strong>
+                                <span>
+                                  {group.rows.length} users · {group.workingDays} working days · {group.leave} leave · {group.halfDay} half day · {group.absent} absent
+                                </span>
+                              </div>
+                            </td>
+                          </tr>
+                          {group.rows.map((row) => (
+                            <tr key={row.userId}>
+                              <td data-label="User">
+                                <div className="person-cell">
+                                  <span className="person-cell__name">{row.userName}</span>
+                                  <span className="person-cell__meta">{row.designation}</span>
+                                </div>
+                              </td>
+                              <td data-label="Working days" className="month-report__num">{row.workingDays}</td>
+                              <td data-label="Leave" className="month-report__num">{row.leave}</td>
+                              <td data-label="Half day" className="month-report__num">{row.halfDay}</td>
+                              <td data-label="Absent" className="month-report__num">{row.absent}</td>
+                              <td data-label="Average check-in" className="month-report__time">{row.averageCheckIn}</td>
+                            </tr>
+                          ))}
+                        </Fragment>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
             <div className="table-wrap">
               <table className="data-table">
                 <thead>
                   <tr>
+                    <th>Company</th>
                     <th>Date</th>
                     <th>Employee</th>
                     <th>Status</th>
@@ -853,87 +1055,122 @@ export default function AttendancePage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {displayedRecords.length === 0 ? (
+                  {companyGroups.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="data-table__empty">
-                        No attendance records for {company.shortLabel}.
+                      <td colSpan={9} className="data-table__empty">
+                        No attendance records for {company.label}.
                       </td>
                     </tr>
                   ) : (
-                    displayedRecords.map((row) => {
-                      const follow = summarizeFollowUps(row.hourlyFollowUps);
-                      const logoutAddress = getLogoutAddress(row);
-                      return (
-                        <tr key={row._id}>
-                          <td data-label="Date">{formatDisplayDate(row.date)}</td>
-                          <td data-label="Employee">
-                            <div className="person-cell">
-                              <span className="person-cell__name">{row.userName || '—'}</span>
-                              <span className="person-cell__meta">
-                                {row.designation || '—'}
-                                {row.teamLeaderName ? ` · ${row.teamLeaderName}` : ''}
-                                {row.managerName ? ` · ${row.managerName}` : ''}
+                    companyGroups.map((group) => (
+                      <Fragment key={group.key}>
+                        <tr className="company-band">
+                          <td colSpan={9}>
+                            <div className="company-band__inner">
+                              <strong>{group.label}</strong>
+                              <span>
+                                {group.marked} marked
+                                {group.missing ? ` · ${group.missing} not marked` : ''}
+                                {' · '}
+                                {group.followups} follow-ups · {group.prospects} prospects · {group.pipeline} pipeline
                               </span>
                             </div>
                           </td>
-                          <td data-label="Status">
-                            <StatusBadge status={row.status} />
-                          </td>
-                          <td data-label="Check-in" className="session-td">
-                            <div className="session-cell">
-                              <AttendancePhoto src={row.image} alt={`${row.userName || 'Employee'} check-in`} />
-                              <div>
-                                <span className="session-cell__time">{formatWhen(row.markedAt)}</span>
-                                <span className="session-cell__place">{getAttendanceAddress(row)}</span>
-                              </div>
-                            </div>
-                          </td>
-                          <td data-label="Logout" className="session-td">
-                            {row.logoutAt ? (
-                              <div className="session-cell">
-                                <AttendancePhoto src={row.logoutImage} alt={`${row.userName || 'Employee'} logout`} />
-                                <div>
-                                  <span className="session-cell__time">{formatWhen(row.logoutAt)}</span>
-                                  <span className="session-cell__place">{logoutAddress || '—'}</span>
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="session-cell__pending">Still in</span>
-                            )}
-                          </td>
-                          <td data-label="Hourly follow-up">
-                            {follow.slots ? (
-                              <div className="follow-cell">
-                                <div className="follow-stats">
-                                  <span><strong>{follow.followups}</strong> follow-ups</span>
-                                  <span><strong>{follow.prospects}</strong> prospects</span>
-                                  <span><strong>{follow.pipeline}</strong> pipeline</span>
-                                </div>
-                                <button type="button" className="btn btn--edit" onClick={() => setFollowUpRecord(row)}>
-                                  {follow.slots} hour{follow.slots === 1 ? '' : 's'}
-                                </button>
-                              </div>
-                            ) : (
-                              <span className="session-cell__pending">No follow-ups</span>
-                            )}
-                          </td>
-                          <td data-label="Note">{row.note || '—'}</td>
-                          <td data-label="Actions">
-                            <button
-                              type="button"
-                              className="btn btn--edit"
-                              onClick={() => setEditingRecord(row)}
-                            >
-                              Edit
-                            </button>
-                          </td>
                         </tr>
-                      );
-                    })
+                        {group.rows.map((row) => {
+                          const follow = summarizeFollowUps(row.hourlyFollowUps);
+                          const logoutAddress = getLogoutAddress(row);
+                          return (
+                            <tr key={row._id} className={row.missing ? 'row--missing' : ''}>
+                              <td data-label="Company">{row.companyLabel}</td>
+                              <td data-label="Date">{formatDisplayDate(row.date)}</td>
+                              <td data-label="Employee">
+                                <div className="person-cell">
+                                  <span className="person-cell__name">{row.userName || '—'}</span>
+                                  <span className="person-cell__meta">
+                                    {row.designation || '—'}
+                                    {row.teamLeaderName ? ` · ${row.teamLeaderName}` : ''}
+                                    {row.managerName ? ` · ${row.managerName}` : ''}
+                                  </span>
+                                </div>
+                              </td>
+                              <td data-label="Status">
+                                <StatusBadge status={row.status} />
+                              </td>
+                              <td data-label="Check-in" className="session-td">
+                                {row.missing ? (
+                                  <span className="session-cell__pending">Not marked</span>
+                                ) : (
+                                  <div className="session-cell">
+                                    <AttendancePhoto src={row.image} alt={`${row.userName || 'Employee'} check-in`} />
+                                    <div>
+                                      <span className="session-cell__time">{formatWhen(row.markedAt)}</span>
+                                      <span className="session-cell__place">{getAttendanceAddress(row)}</span>
+                                    </div>
+                                  </div>
+                                )}
+                              </td>
+                              <td data-label="Logout" className="session-td">
+                                {row.missing ? (
+                                  <span className="session-cell__pending">—</span>
+                                ) : row.logoutAt ? (
+                                  <div className="session-cell">
+                                    <AttendancePhoto src={row.logoutImage} alt={`${row.userName || 'Employee'} logout`} />
+                                    <div>
+                                      <span className="session-cell__time">{formatWhen(row.logoutAt)}</span>
+                                      <span className="session-cell__place">{logoutAddress || '—'}</span>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <span className="session-cell__pending">Still in</span>
+                                )}
+                              </td>
+                              <td data-label="Hourly follow-up">
+                                {follow.slots ? (
+                                  <div className="follow-cell">
+                                    <div className="follow-stats">
+                                      <span><strong>{follow.followups}</strong> follow-ups</span>
+                                      <span><strong>{follow.prospects}</strong> prospects</span>
+                                      <span><strong>{follow.pipeline}</strong> pipeline</span>
+                                    </div>
+                                    <button type="button" className="btn btn--edit" onClick={() => setFollowUpRecord(row)}>
+                                      {follow.slots} hour{follow.slots === 1 ? '' : 's'}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <span className="session-cell__pending">No follow-ups</span>
+                                )}
+                              </td>
+                              <td data-label="Note">{row.note || '—'}</td>
+                              <td data-label="Actions">
+                                {row.missing ? (
+                                  <button
+                                    type="button"
+                                    className="btn btn--edit"
+                                    onClick={() => handleNotMarkedSelect(row.userId)}
+                                  >
+                                    Mark
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="btn btn--edit"
+                                    onClick={() => setEditingRecord(row)}
+                                  >
+                                    Edit
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </Fragment>
+                    ))
                   )}
                 </tbody>
               </table>
             </div>
+            )}
           </>
         )}
       </section>

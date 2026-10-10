@@ -3,6 +3,7 @@ const STATUS_LABELS = {
   absent: 'Absent',
   'half-day': 'Half Day',
   late: 'Late',
+  'not-marked': 'Not marked',
 };
 
 export default function StatusBadge({ status }) {
